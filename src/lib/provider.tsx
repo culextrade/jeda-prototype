@@ -1,11 +1,26 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { JedaState, Debt, CheckIn, RecoveryPlan, LedgerEntry, MissionKey, LevelKey } from "./types";
+import { JedaState, Debt, CheckIn, RecoveryPlan, RecoveryTask, LedgerEntry, MissionKey, LevelKey, Badge, BadgeKey } from "./types";
 import { getState, setState, subscribe, resetAll, seedDemo, DEFAULT_STATE } from "./store";
 import { evaluateMissions } from "./missions";
 import { totalEarnedXp } from "./selectors";
 import { getLevelByXp } from "./levels";
+
+const awardBadge = (currentState: JedaState, badgeKey: BadgeKey): JedaState => {
+  const hasBadge = currentState.badges.some((b) => b.key === badgeKey);
+  if (hasBadge) return currentState;
+
+  const newBadge: Badge = {
+    key: badgeKey,
+    earnedAt: new Date().toISOString(),
+  };
+
+  return {
+    ...currentState,
+    badges: [...currentState.badges, newBadge],
+  };
+};
 
 interface JedaContextType {
   state: JedaState;
@@ -237,10 +252,19 @@ export const JedaProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Update Task Status
   const updateTaskStatus = (taskId: string, done: boolean) => {
+    let isNewlyClaimed = false;
     const nextPlans = state.recoveryPlans.map((plan) => {
       const nextTasks = plan.tasks.map((task) => {
         if (task.id === taskId) {
-          return { ...task, done };
+          const shouldClaimReward = done && !task.rewardClaimed;
+          if (shouldClaimReward) {
+            isNewlyClaimed = true;
+          }
+          return {
+            ...task,
+            done,
+            rewardClaimed: task.rewardClaimed || shouldClaimReward,
+          };
         }
         return task;
       });
@@ -252,8 +276,7 @@ export const JedaProvider: React.FC<{ children: React.ReactNode }> = ({ children
       recoveryPlans: nextPlans,
     };
 
-    // If done = true, earn +5 JC per task
-    if (done) {
+    if (isNewlyClaimed) {
       const rewardCoins = 5;
       const ledgerEntry: LedgerEntry = {
         id: "ledger-" + Math.random().toString(36).substring(2, 9),
@@ -273,15 +296,18 @@ export const JedaProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ledger: newLedger,
       };
 
-      // Re-evaluate missions (e.g. anti-relapse, complete-recovery)
       const evaluated = evaluateMissions(nextState);
 
       // Check if complete-recovery mission is newly completed
       const hasPlan = evaluated.recoveryPlans.length > 0;
       const tasks = hasPlan ? evaluated.recoveryPlans[0].tasks : [];
-      const planFinished = hasPlan && tasks.length > 0 && tasks.every((t) => t.done);
+      const tasks24h = tasks.filter(t => t.horizon === "24jam");
+      const planFinished = hasPlan && tasks24h.length > 0 && tasks24h.every((t) => t.done);
       
-      if (planFinished) {
+      const mission = evaluated.missions.find(m => m.key === "complete-recovery");
+      const completeRecoveryMissionUnclaimed = mission && mission.status === "completed";
+
+      if (planFinished && completeRecoveryMissionUnclaimed) {
         // Auto-claim complete-recovery
         const completeReward = 50;
         const completeLedgerEntry: LedgerEntry = {
@@ -303,15 +329,17 @@ export const JedaProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return m;
         });
         
+        // Award badge
+        let finalState = awardBadge(evaluated, "rencana-pertama");
+        setState(finalState);
         showToast("Rencana Pemulihan Selesai!", completeReward);
+        checkLevelUp(oldXp, totalEarnedXp(finalState.credit.ledger), finalState);
+      } else {
+        setState(evaluated);
+        showToast("Langkah kecil selesai!", rewardCoins);
+        checkLevelUp(oldXp, newXp, evaluated);
       }
-
-      setState(evaluated);
-      showToast("Langkah kecil selesai!", rewardCoins);
-      checkLevelUp(oldXp, newXp, evaluated);
     } else {
-      // If task unchecked, just deduct (simple proxy for prototype consistency, or just skip deduction)
-      // Usually, unchecking doesn't deduct for ease, but we can update evaluated missions
       const evaluated = evaluateMissions(nextState);
       setState(evaluated);
     }
@@ -319,69 +347,102 @@ export const JedaProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Create Recovery Plan
   const createRecoveryPlan = (basedOnCheckInId?: string) => {
+    // Guard: Do not create plan if one already exists
+    if (state.recoveryPlans.length > 0) return;
+
+    // Read state conditions
+    const lastCheckIn = state.checkIns.length > 0 ? state.checkIns[state.checkIns.length - 1] : null;
+    const intentToBorrowVal = lastCheckIn ? lastCheckIn.intentToBorrow : 3;
+    const hasHighPressure = state.debts.some((d) => d.collectorPressure === 3);
+    const hasUnlicensed = state.debts.some((d) => d.type === "pinjol" && d.isLicensedKnown === false);
+    const totalDebt = state.debts.reduce((sum, d) => sum + d.outstanding, 0);
+
+    // Build plan tasks
+    const tasks: RecoveryTask[] = [
+      // Universal base tasks
+      {
+        id: "task-" + Math.random().toString(36).substring(2, 9),
+        horizon: "24jam",
+        text: "Tarik napas: kondisi ini bisa ditangani bertahap.",
+        category: "emosional",
+        done: false,
+        rewardClaimed: false,
+      },
+      {
+        id: "task-" + Math.random().toString(36).substring(2, 9),
+        horizon: "7hari",
+        text: "Urutkan kewajiban dari yang paling mendesak.",
+        category: "operasional",
+        done: false,
+        rewardClaimed: false,
+      },
+      {
+        id: "task-" + Math.random().toString(36).substring(2, 9),
+        horizon: "30hari",
+        text: "Susun anggaran sederhana untuk bulan depan.",
+        category: "operasional",
+        done: false,
+        rewardClaimed: false,
+      },
+    ];
+
+    // Adaptive triggers
+    if (intentToBorrowVal >= 4) {
+      tasks.push({
+        id: "task-" + Math.random().toString(36).substring(2, 9),
+        horizon: "24jam",
+        text: "Tunda dulu keputusan meminjam baru hari ini.",
+        category: "emosional",
+        done: false,
+        rewardClaimed: false,
+      });
+    }
+    if (totalDebt > 0) {
+      tasks.push({
+        id: "task-" + Math.random().toString(36).substring(2, 9),
+        horizon: "24jam",
+        text: "Catat 1 utang yang paling menekan.",
+        category: "operasional",
+        done: false,
+        rewardClaimed: false,
+      });
+    }
+    if (hasHighPressure) {
+      tasks.push({
+        id: "task-" + Math.random().toString(36).substring(2, 9),
+        horizon: "7hari",
+        text: "Siapkan kalimat untuk bicara dengan penagih dengan tenang.",
+        category: "sosial",
+        done: false,
+        rewardClaimed: false,
+      });
+    }
+    if (hasUnlicensed) {
+      tasks.push({
+        id: "task-" + Math.random().toString(36).substring(2, 9),
+        horizon: "7hari",
+        text: "Cek legalitas pemberi pinjaman di daftar OJK.",
+        category: "regulatif",
+        done: false,
+        rewardClaimed: false,
+      });
+    }
+    if (totalDebt > 5000000) {
+      tasks.push({
+        id: "task-" + Math.random().toString(36).substring(2, 9),
+        horizon: "30hari",
+        text: "Pertimbangkan bicara dengan mentor keuangan/konselor.",
+        category: "sosial",
+        done: false,
+        rewardClaimed: false,
+      });
+    }
+
     const newPlan: RecoveryPlan = {
       id: "plan-" + Math.random().toString(36).substring(2, 9),
       createdAt: new Date().toISOString(),
       basedOnCheckInId,
-      tasks: [
-        // Default tasks from microcopy §6
-        {
-          id: "task-" + Math.random().toString(36).substring(2, 9),
-          horizon: "24jam",
-          text: "Tunda dulu keputusan meminjam baru hari ini.",
-          category: "emosional",
-          done: false,
-        },
-        {
-          id: "task-" + Math.random().toString(36).substring(2, 9),
-          horizon: "24jam",
-          text: "Catat 1 utang yang paling menekan.",
-          category: "operasional",
-          done: false,
-        },
-        {
-          id: "task-" + Math.random().toString(36).substring(2, 9),
-          horizon: "24jam",
-          text: "Tarik napas: kondisi ini bisa ditangani bertahap.",
-          category: "emosional",
-          done: false,
-        },
-        {
-          id: "task-" + Math.random().toString(36).substring(2, 9),
-          horizon: "7hari",
-          text: "Urutkan kewajiban dari yang paling mendesak.",
-          category: "operasional",
-          done: false,
-        },
-        {
-          id: "task-" + Math.random().toString(36).substring(2, 9),
-          horizon: "7hari",
-          text: "Siapkan kalimat untuk bicara dengan penagih dengan tenang.",
-          category: "sosial",
-          done: false,
-        },
-        {
-          id: "task-" + Math.random().toString(36).substring(2, 9),
-          horizon: "7hari",
-          text: "Cek legalitas pemberi pinjaman di daftar OJK.",
-          category: "regulatif",
-          done: false,
-        },
-        {
-          id: "task-" + Math.random().toString(36).substring(2, 9),
-          horizon: "30hari",
-          text: "Pertimbangkan bicara dengan mentor keuangan/konselor.",
-          category: "sosial",
-          done: false,
-        },
-        {
-          id: "task-" + Math.random().toString(36).substring(2, 9),
-          horizon: "30hari",
-          text: "Susun anggaran sederhana minggu depan.",
-          category: "operasional",
-          done: false,
-        },
-      ],
+      tasks,
     };
 
     const nextState = {
@@ -447,7 +508,7 @@ export const JedaProvider: React.FC<{ children: React.ReactNode }> = ({ children
       m.key === key ? { ...m, status: "claimed" as const } : m
     );
 
-    const nextState = {
+    let nextState = {
       ...state,
       missions: nextMissions,
       credit: {
@@ -456,6 +517,23 @@ export const JedaProvider: React.FC<{ children: React.ReactNode }> = ({ children
       },
     };
 
+    // Auto-award badges based on claimed mission
+    if (key === "first-checkin") {
+      nextState = awardBadge(nextState, "berani-melihat");
+    } else if (key === "complete-debt-map") {
+      nextState = awardBadge(nextState, "peta-pertama");
+    } else if (key === "complete-recovery") {
+      nextState = awardBadge(nextState, "rencana-pertama");
+    } else if (key === "streak-3") {
+      nextState = awardBadge(nextState, "streak-3");
+    } else if (key === "streak-7") {
+      nextState = awardBadge(nextState, "streak-7");
+    } else if (key === "anti-relapse-7") {
+      nextState = awardBadge(nextState, "anti-relapse-7");
+    } else if (key === "anti-relapse-30") {
+      nextState = awardBadge(nextState, "anti-relapse-30");
+    }
+
     setState(nextState);
     showToast(`Berhasil klaim reward!`, mission.reward);
     checkLevelUp(oldXp, newXp, nextState);
@@ -463,11 +541,19 @@ export const JedaProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Confirm Anti-Relapse (daily question)
   const confirmAntiRelapse = (isSuccessful: boolean) => {
+    const todayStr = new Date().toISOString().split("T")[0];
+
     if (isSuccessful) {
-      // Same day anti-relapse check, increment antiRelapseDays
+      // Guard: once per day
+      if (state.streak.lastAntiRelapseDate === todayStr) {
+        showToast("Kamu sudah mengisi anti-relapse hari ini.", 0);
+        return;
+      }
+
       const nextStreak = {
         ...state.streak,
         antiRelapseDays: (state.streak.antiRelapseDays ?? 0) + 1,
+        lastAntiRelapseDate: todayStr,
       };
 
       const nextState = {
@@ -478,7 +564,7 @@ export const JedaProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const evaluated = evaluateMissions(nextState);
       
       // Auto reward if streak milestones hit
-      const finalState = { ...evaluated };
+      let finalState = { ...evaluated };
       const oldXp = totalEarnedXp(state.credit.ledger);
       let earnAmount = 0;
       let label = "";
@@ -499,6 +585,7 @@ export const JedaProvider: React.FC<{ children: React.ReactNode }> = ({ children
         finalState.credit.ledger.push(entry);
         finalState.credit.balance += earnAmount;
         finalState.missions = finalState.missions.map(m => m.key === 'anti-relapse-7' ? { ...m, status: 'claimed', progress: 7 } : m);
+        finalState = awardBadge(finalState, "anti-relapse-7");
       } else if (nextStreak.antiRelapseDays === 30) {
         // Auto reward 500 JC
         earnAmount = 500;
@@ -515,6 +602,7 @@ export const JedaProvider: React.FC<{ children: React.ReactNode }> = ({ children
         finalState.credit.ledger.push(entry);
         finalState.credit.balance += earnAmount;
         finalState.missions = finalState.missions.map(m => m.key === 'anti-relapse-30' ? { ...m, status: 'claimed', progress: 30 } : m);
+        finalState = awardBadge(finalState, "anti-relapse-30");
       }
 
       setState(finalState);
@@ -525,12 +613,13 @@ export const JedaProvider: React.FC<{ children: React.ReactNode }> = ({ children
         showToast("Streak bebas pinjaman bertambah! Tetap kuat.", 0);
       }
     } else {
-      // Streak reset
+      // Streak reset, but still guard date so they don't toggle back and check "Ya"
       const nextState = {
         ...state,
         streak: {
           ...state.streak,
           antiRelapseDays: 0,
+          lastAntiRelapseDate: todayStr,
         },
       };
       const evaluated = evaluateMissions(nextState);

@@ -18,6 +18,7 @@ export const DEFAULT_STATE: JedaState = {
     current: 0,
     longest: 0,
     antiRelapseDays: 0,
+    lastAntiRelapseDate: undefined,
   },
   badges: [],
   referrals: [],

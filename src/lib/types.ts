@@ -68,6 +68,7 @@ export interface RecoveryTask {
   text: string;
   category: "regulatif" | "operasional" | "sosial" | "emosional";
   done: boolean;
+  rewardClaimed?: boolean;   // mencegah double-claim +5 JC
 }
 
 export interface RecoveryPlan {
@@ -136,6 +137,7 @@ export interface Streak {
   longest: number;
   lastCheckinDate?: string;  // YYYY-MM-DD
   antiRelapseDays: number;   // menahan diri berturut-turut
+  lastAntiRelapseDate?: string; // YYYY-MM-DD (mencegah farming)
 }
 
 export type BadgeKey =

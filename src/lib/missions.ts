@@ -130,7 +130,8 @@ export function evaluateMissions(state: JedaState): JedaState {
       case "complete-recovery":
         const hasPlan = state.recoveryPlans.length > 0;
         const tasks = hasPlan ? state.recoveryPlans[0].tasks : [];
-        progress = hasPlan && tasks.length > 0 && tasks.every((t) => t.done) ? 1 : 0;
+        const tasks24h = tasks.filter(t => t.horizon === "24jam");
+        progress = hasPlan && tasks24h.length > 0 && tasks24h.every((t) => t.done) ? 1 : 0;
         break;
       case "streak-3":
         progress = Math.min(3, state.streak.current);
