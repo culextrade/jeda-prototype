@@ -227,6 +227,7 @@ export function getDemoState(): JedaState {
     current: 5,
     longest: 6,
     lastCheckinDate: yesterdayStr,
+    antiRelapseDays: 5,
   };
 
   // 7. Badges

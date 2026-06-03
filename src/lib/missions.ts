@@ -139,10 +139,10 @@ export function evaluateMissions(state: JedaState): JedaState {
         progress = Math.min(7, state.streak.current);
         break;
       case "anti-relapse-7":
-        progress = Math.min(7, state.streak.current); // Use streak current as proxy for anti-relapse days
+        progress = Math.min(7, state.streak.antiRelapseDays ?? 0);
         break;
       case "anti-relapse-30":
-        progress = Math.min(30, state.streak.current); // Use streak current as proxy
+        progress = Math.min(30, state.streak.antiRelapseDays ?? 0);
         break;
       case "refer-someone":
         progress = Math.min(1, state.referrals.filter((r) => r.status === "accepted").length);

@@ -17,6 +17,7 @@ export const DEFAULT_STATE: JedaState = {
   streak: {
     current: 0,
     longest: 0,
+    antiRelapseDays: 0,
   },
   badges: [],
   referrals: [],

@@ -141,6 +141,7 @@ export const JedaProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!state.streak.lastCheckinDate) {
       // First checkin ever
       nextStreak = {
+        ...state.streak,
         current: 1,
         longest: 1,
         lastCheckinDate: todayStr,
@@ -149,6 +150,7 @@ export const JedaProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Checked in yesterday, increment streak
       const nextCurrent = state.streak.current + 1;
       nextStreak = {
+        ...state.streak,
         current: nextCurrent,
         longest: Math.max(state.streak.longest, nextCurrent),
         lastCheckinDate: todayStr,
@@ -156,6 +158,7 @@ export const JedaProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } else if (state.streak.lastCheckinDate !== todayStr) {
       // Streak broken, reset to 1
       nextStreak = {
+        ...state.streak,
         current: 1,
         longest: Math.max(state.streak.longest, 1),
         lastCheckinDate: todayStr,
@@ -175,45 +178,61 @@ export const JedaProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // According to data model §3: Check-in harian: +10 JC, Check-in pertama: +20 JC.
     // Let's check check-in count
     const isFirst = state.checkIns.length === 0;
-    const rewardCoins = isFirst ? 20 : 10;
+    const alreadyToday = state.checkIns.some(c => c.timestamp.split("T")[0] === todayStr);
+    const rewardCoins = isFirst ? 20 : (alreadyToday ? 0 : 10);
     const label = isFirst ? "Check-in pertama JEDA" : "Check-in harian";
     const ledgerSource = "checkin" as const;
 
-    // Check if we should auto-claim daily checkins, or trigger mission completed
-    // Let's implement auto-claim for checkin to keep it smooth, and update balance
-    const ledgerId = "ledger-" + Math.random().toString(36).substring(2, 9);
-    const newEntry: LedgerEntry = {
-      id: ledgerId,
-      timestamp: new Date().toISOString(),
-      type: "earn",
-      amount: rewardCoins,
-      source: ledgerSource,
-      label,
-    };
-
-    const newLedger = [...evaluated.credit.ledger, newEntry];
+    let finalState = evaluated;
     const oldXp = totalEarnedXp(state.credit.ledger);
-    const newXp = totalEarnedXp(newLedger);
 
-    // Auto-update mission status to claimed
-    evaluated.missions = evaluated.missions.map((m) => {
-      if (isFirst && m.key === "first-checkin") {
-        return { ...m, status: "claimed", progress: 1 };
+    if (rewardCoins > 0) {
+      const ledgerId = "ledger-" + Math.random().toString(36).substring(2, 9);
+      const newEntry: LedgerEntry = {
+        id: ledgerId,
+        timestamp: new Date().toISOString(),
+        type: "earn",
+        amount: rewardCoins,
+        source: ledgerSource,
+        label,
+      };
+
+      const newLedger = [...evaluated.credit.ledger, newEntry];
+      const newXp = totalEarnedXp(newLedger);
+
+      // Auto-update mission status to claimed
+      evaluated.missions = evaluated.missions.map((m) => {
+        if (isFirst && m.key === "first-checkin") {
+          return { ...m, status: "claimed", progress: 1 };
+        }
+        if (m.key === "daily-checkin") {
+          return { ...m, status: "claimed", progress: 1 };
+        }
+        return m;
+      });
+
+      evaluated.credit = {
+        balance: evaluated.credit.balance + rewardCoins,
+        ledger: newLedger,
+      };
+      
+      finalState = evaluated;
+
+      // 🟡 Nudge: Suppress toast if in distress (capacity <= 2 || urgency == 5 || intentToBorrow == 5)
+      const isDistress = checkInData.capacity <= 2 || checkInData.urgency === 5 || checkInData.intentToBorrow === 5;
+      if (isDistress) {
+        showToast("Check-in berhasil disimpan. Tarik napas sejenak.", 0);
+      } else {
+        showToast(`Misi Selesai: ${label}`, rewardCoins);
       }
-      if (m.key === "daily-checkin") {
-        return { ...m, status: "claimed", progress: 1 };
-      }
-      return m;
-    });
+      
+      checkLevelUp(oldXp, newXp, finalState);
+    } else {
+      // already today
+      showToast("Check-in tersimpan.", 0);
+    }
 
-    evaluated.credit = {
-      balance: evaluated.credit.balance + rewardCoins,
-      ledger: newLedger,
-    };
-
-    setState(evaluated);
-    showToast(`Misi Selesai: ${label}`, rewardCoins);
-    checkLevelUp(oldXp, newXp, evaluated);
+    setState(finalState);
   };
 
   // Update Task Status
@@ -445,14 +464,10 @@ export const JedaProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Confirm Anti-Relapse (daily question)
   const confirmAntiRelapse = (isSuccessful: boolean) => {
     if (isSuccessful) {
-      // Same day anti-relapse check, increment streak or reward
-      // We can just confirm anti-relapse. Let's increment streak current
-      const todayStr = new Date().toISOString().split("T")[0];
+      // Same day anti-relapse check, increment antiRelapseDays
       const nextStreak = {
         ...state.streak,
-        current: state.streak.current + 1,
-        longest: Math.max(state.streak.longest, state.streak.current + 1),
-        lastCheckinDate: todayStr,
+        antiRelapseDays: (state.streak.antiRelapseDays ?? 0) + 1,
       };
 
       const nextState = {
@@ -468,7 +483,7 @@ export const JedaProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let earnAmount = 0;
       let label = "";
 
-      if (nextStreak.current === 7) {
+      if (nextStreak.antiRelapseDays === 7) {
         // Auto reward 100 JC
         earnAmount = 100;
         label = "Tujuh hari menahan diri (Anti-relapse)";
@@ -484,7 +499,7 @@ export const JedaProvider: React.FC<{ children: React.ReactNode }> = ({ children
         finalState.credit.ledger.push(entry);
         finalState.credit.balance += earnAmount;
         finalState.missions = finalState.missions.map(m => m.key === 'anti-relapse-7' ? { ...m, status: 'claimed', progress: 7 } : m);
-      } else if (nextStreak.current === 30) {
+      } else if (nextStreak.antiRelapseDays === 30) {
         // Auto reward 500 JC
         earnAmount = 500;
         label = "Tiga puluh hari menahan diri (Anti-relapse)";
@@ -507,7 +522,7 @@ export const JedaProvider: React.FC<{ children: React.ReactNode }> = ({ children
         showToast(label, earnAmount);
         checkLevelUp(oldXp, totalEarnedXp(finalState.credit.ledger), finalState);
       } else {
-        showToast("Streak jeda berhasil dipertahankan!", 0);
+        showToast("Streak bebas pinjaman bertambah! Tetap kuat.", 0);
       }
     } else {
       // Streak reset
@@ -515,7 +530,7 @@ export const JedaProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ...state,
         streak: {
           ...state.streak,
-          current: 0,
+          antiRelapseDays: 0,
         },
       };
       const evaluated = evaluateMissions(nextState);

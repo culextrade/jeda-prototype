@@ -135,6 +135,7 @@ export interface Streak {
   current: number;
   longest: number;
   lastCheckinDate?: string;  // YYYY-MM-DD
+  antiRelapseDays: number;   // menahan diri berturut-turut
 }
 
 export type BadgeKey =
