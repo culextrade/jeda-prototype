@@ -1,0 +1,22 @@
+{
+  "name": "JEDA — Recovery Space",
+  "short_name": "JEDA",
+  "description": "Emotional-first debt recovery support platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F7FAF9",
+  "theme_color": "#1F6F65",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}
