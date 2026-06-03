@@ -4,15 +4,16 @@ import React from "react";
 import { Debt } from "@/lib/types";
 import Card from "../ui/Card";
 import RupiahText from "../ui/RupiahText";
-import { AlertCircle, Calendar, Trash2 } from "lucide-react";
+import { AlertCircle, Calendar, Trash2, Edit } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface DebtCardProps {
   debt: Debt;
   onDelete?: (id: string) => void;
+  onEdit?: (debt: Debt) => void;
 }
 
-export const DebtCard: React.FC<DebtCardProps> = ({ debt, onDelete }) => {
+export const DebtCard: React.FC<DebtCardProps> = ({ debt, onDelete, onEdit }) => {
   const { lenderName, type, outstanding, dueDate, collectorPressure } = debt;
 
   // Render pressure dots (1-3 dots)
@@ -105,15 +106,27 @@ export const DebtCard: React.FC<DebtCardProps> = ({ debt, onDelete }) => {
           </h4>
         </div>
 
-        {onDelete && (
-          <button
-            onClick={() => onDelete(debt.id)}
-            className="w-7 h-7 rounded-full flex items-center justify-center text-ink-soft hover:text-clay hover:bg-clay-tint/50 transition-all"
-            title="Hapus"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        )}
+        <div className="flex items-center gap-1">
+          {onEdit && (
+            <button
+              onClick={() => onEdit(debt)}
+              className="w-7 h-7 rounded-full flex items-center justify-center text-ink-soft hover:text-pine hover:bg-pine-tint/50 transition-all"
+              title="Ubah"
+            >
+              <Edit className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          {onDelete && (
+            <button
+              onClick={() => onDelete(debt.id)}
+              className="w-7 h-7 rounded-full flex items-center justify-center text-ink-soft hover:text-clay hover:bg-clay-tint/50 transition-all"
+              title="Hapus"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Middle row: Amount */}

@@ -330,7 +330,7 @@ export const JedaProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         
         // Award badge
-        let finalState = awardBadge(evaluated, "rencana-pertama");
+        const finalState = awardBadge(evaluated, "rencana-pertama");
         setState(finalState);
         showToast("Rencana Pemulihan Selesai!", completeReward);
         checkLevelUp(oldXp, totalEarnedXp(finalState.credit.ledger), finalState);
