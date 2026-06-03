@@ -9,8 +9,12 @@ export const AppHeader: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
 
-  // If landing page, hide or show minimal header
-  if (pathname === "/") {
+  // If landing page, safe space, or check-in flow, hide the global header
+  if (
+    pathname === "/" ||
+    pathname === "/safe-space" ||
+    pathname?.startsWith("/check-in")
+  ) {
     return null;
   }
 
