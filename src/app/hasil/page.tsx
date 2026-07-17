@@ -25,10 +25,14 @@ export default function HasilPage() {
   const state = useJeda();
   const [step, setStep] = useState(0);
   const [showWhy, setShowWhy] = useState(false);
+  // Tunggu snapshot client (localStorage) terbaca sebelum memutuskan redirect —
+  // render pertama saat hidrasi memakai snapshot server yang kosong.
+  const [ready, setReady] = useState(false);
+  useEffect(() => setReady(true), []);
 
   useEffect(() => {
-    if (!state.assessment || !state.triage) router.replace("/asesmen");
-  }, [state.assessment, state.triage, router]);
+    if (ready && (!state.assessment || !state.triage)) router.replace("/asesmen");
+  }, [ready, state.assessment, state.triage, router]);
 
   if (!state.assessment || !state.triage) return null;
 

@@ -2,7 +2,7 @@
 
 // ── Rencana Pemulihan — di-generate rule-based, aturannya terbuka ──
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
@@ -52,7 +52,6 @@ export default function RencanaPage() {
   const [genStep, setGenStep] = useState(-1);
   const [skripOpen, setSkripOpen] = useState(false);
   const [copied, setCopied] = useState<number | null>(null);
-  const generatingRef = useRef(false);
 
   const needGenerate =
     !!state.triage &&
@@ -61,8 +60,7 @@ export default function RencanaPage() {
     !state.plan;
 
   useEffect(() => {
-    if (!needGenerate || generatingRef.current) return;
-    generatingRef.current = true;
+    if (!needGenerate) return;
     let i = 0;
     setGenStep(0);
     const tick = setInterval(() => {
@@ -75,6 +73,7 @@ export default function RencanaPage() {
         setGenStep(-1);
       }
     }, 620);
+    // Cleanup menangani StrictMode double-invoke maupun unmount di tengah jalan.
     return () => clearInterval(tick);
   }, [needGenerate]);
 

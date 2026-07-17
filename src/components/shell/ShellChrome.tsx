@@ -116,7 +116,7 @@ export default function ShellChrome({
               {NAV.slice(0, 2).map((item) => (
                 <NavItem key={item.href} {...item} active={pathname === item.href} />
               ))}
-              <div aria-hidden className="flex flex-col items-center pt-4">
+              <div aria-hidden className="flex flex-col items-center justify-end self-stretch pb-0.5 pt-[34px]">
                 <span className="text-[10px] font-semibold text-pine">Jeda dulu</span>
               </div>
               {NAV.slice(2).map((item) => (

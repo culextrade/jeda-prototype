@@ -2,7 +2,7 @@
 
 // ── Protokol krisis — SELALU gratis, tidak pernah di balik paywall ──
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Phone, ExternalLink, MapPin } from "lucide-react";
 import { CRISIS } from "@/lib/content";
@@ -13,9 +13,12 @@ const ICONS = [Phone, ExternalLink, MapPin];
 export default function KrisisPage() {
   const router = useRouter();
 
-  const cameFromAsesmen =
-    typeof window !== "undefined" &&
-    window.location.search.includes("from=asesmen");
+  // Baca query di effect — saat render pertama dari router.push,
+  // window.location bisa masih menunjuk URL lama.
+  const [cameFromAsesmen, setCameFromAsesmen] = useState(false);
+  useEffect(() => {
+    setCameFromAsesmen(window.location.search.includes("from=asesmen"));
+  }, []);
 
   return (
     <div className="flex h-full flex-col overflow-y-auto bg-deep text-white">

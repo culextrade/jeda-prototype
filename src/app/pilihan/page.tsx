@@ -17,10 +17,13 @@ export default function PilihanPage() {
   const router = useRouter();
   const state = useJeda();
   const [dirOpen, setDirOpen] = useState(false);
+  // Tunggu snapshot client terbaca — hindari redirect palsu saat hidrasi.
+  const [ready, setReady] = useState(false);
+  useEffect(() => setReady(true), []);
 
   useEffect(() => {
-    if (!state.triage) router.replace("/asesmen");
-  }, [state.triage, router]);
+    if (ready && !state.triage) router.replace("/asesmen");
+  }, [ready, state.triage, router]);
 
   if (!state.triage) return null;
   const jalur = state.triage.jalur;

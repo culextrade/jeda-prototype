@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 
 /**
  * Bingkai perangkat: full-screen di ponsel, device frame 430px di desktop.
@@ -8,6 +8,12 @@ import React from "react";
  * berada di dalam layar perangkat.
  */
 export default function AppFrame({ children }: { children: React.ReactNode }) {
+  // Mode capture screenshot: ?noanim=1 mematikan animasi entri (deterministik).
+  useEffect(() => {
+    if (window.location.search.includes("noanim")) {
+      document.documentElement.classList.add("noanim");
+    }
+  }, []);
   return (
     <div className="flex h-dvh w-full items-center justify-center bg-[#EBE8DF] sm:p-6">
       <div className="relative flex h-full w-full flex-col sm:h-[860px] sm:max-h-[92vh] sm:w-[430px]">
