@@ -1,33 +1,41 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 
-export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-  tone?: "default" | "pine" | "amber" | "clay";
-}
-
-export const Card: React.FC<CardProps> = ({
+export function Card({
   children,
   className,
-  tone = "default",
   ...props
-}) => {
-  const baseStyles = "rounded-md p-5 border border-line transition-all duration-200";
-
-  const tones = {
-    default: "bg-surface shadow-card border-line",
-    pine: "bg-pine-tint border-pine/20 text-pine-dark",
-    amber: "bg-amber-tint border-amber/20 text-ink",
-    clay: "bg-clay-tint border-clay/20 text-ink",
-  };
-
+}: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn(baseStyles, tones[tone], className)}
+      className={cn(
+        "rounded-lg border border-line/70 bg-surface p-4 shadow-card",
+        className
+      )}
       {...props}
     >
       {children}
     </div>
   );
-};
+}
+
+export function SectionTitle({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <h2
+      className={cn(
+        "px-1 font-display text-[17px] font-semibold tracking-tight text-ink",
+        className
+      )}
+    >
+      {children}
+    </h2>
+  );
+}
 
 export default Card;

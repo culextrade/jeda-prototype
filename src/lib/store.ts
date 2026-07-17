@@ -1,121 +1,171 @@
-import { JedaState } from "./types";
-import { INITIAL_MISSIONS } from "./missions";
-import { getDemoState } from "./seed";
+"use client";
 
-const STORAGE_KEY = "jeda.state";
+// ── Store local-first (localStorage) + hook React ────────────
+// Tidak ada server: seluruh data tinggal di perangkat user.
+
+import { useSyncExternalStore } from "react";
+import {
+  Assessment,
+  JedaEvent,
+  JedaState,
+  JournalEntry,
+  RootCause,
+} from "./types";
+import { runTriage } from "./engine/triage";
+import { generatePlan } from "./engine/plan";
+import { getDemoState, getDemoJournalWeek } from "./seed";
+
+const KEY = "jeda.v2";
 
 export const DEFAULT_STATE: JedaState = {
-  profile: undefined,
-  checkIns: [],
-  debts: [],
-  recoveryPlans: [],
-  credit: {
-    balance: 0,
-    ledger: [],
-  },
-  missions: INITIAL_MISSIONS,
-  streak: {
-    current: 0,
-    longest: 0,
-    antiRelapseDays: 0,
-    lastAntiRelapseDate: undefined,
-  },
-  badges: [],
-  referrals: [],
-  settings: {
-    remindersOptIn: false,
-    reduceMotion: false,
-    demoMode: false,
-  },
+  consentAt: undefined,
+  assessment: undefined,
+  triage: undefined,
+  plan: undefined,
+  jedaEvents: [],
+  journal: [],
+  membership: { plan: "gratis" },
+  upgradeOffered: false,
+  settings: { demo: false, demoDayOffset: 0 },
 };
 
-let currentState: JedaState = { ...DEFAULT_STATE };
-const listeners = new Set<() => void>();
-
-// Helper to check if window is available (SSR guard)
 const isBrowser = typeof window !== "undefined";
 
-// Load state from localStorage on first import in browser
-if (isBrowser) {
+let state: JedaState = DEFAULT_STATE;
+let loaded = false;
+const listeners = new Set<() => void>();
+
+function load() {
+  if (!isBrowser || loaded) return;
+  loaded = true;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      currentState = { ...DEFAULT_STATE, ...JSON.parse(raw) };
-    } else {
-      currentState = { ...DEFAULT_STATE };
-      // Generate anonymous profile ID
-      currentState.profile = {
-        anonId: "jeda-anon-" + Math.random().toString(36).substring(2, 11),
-        createdAt: new Date().toISOString(),
-        levelKey: "berani-melihat",
-        consentTier: 0,
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(currentState));
-    }
-  } catch (e) {
-    console.error("Failed to load JEDA state from localStorage:", e);
+    const raw = localStorage.getItem(KEY);
+    if (raw) state = { ...DEFAULT_STATE, ...JSON.parse(raw) };
+  } catch {
+    state = DEFAULT_STATE;
+  }
+}
+load();
+
+function persist() {
+  if (!isBrowser) return;
+  try {
+    localStorage.setItem(KEY, JSON.stringify(state));
+  } catch {
+    // penuh / private mode — biarkan berjalan in-memory
   }
 }
 
 export function getState(): JedaState {
-  return currentState;
+  return state;
 }
 
-export function setState(partial: Partial<JedaState> | ((state: JedaState) => Partial<JedaState>)): void {
-  const nextPartial = typeof partial === "function" ? partial(currentState) : partial;
-  currentState = { ...currentState, ...nextPartial };
-
-  if (isBrowser) {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(currentState));
-    } catch (e) {
-      console.error("Failed to write JEDA state to localStorage:", e);
-    }
-  }
-
-  // Notify listeners
-  listeners.forEach((listener) => listener());
+export function set(partial: Partial<JedaState>) {
+  state = { ...state, ...partial };
+  persist();
+  listeners.forEach((l) => l());
 }
 
-export function subscribe(cb: () => void): () => void {
+function subscribe(cb: () => void): () => void {
   listeners.add(cb);
-  return () => {
-    listeners.delete(cb);
-  };
+  return () => listeners.delete(cb);
 }
 
-export function resetAll(): void {
-  currentState = {
-    ...DEFAULT_STATE,
-    profile: {
-      anonId: "jeda-anon-" + Math.random().toString(36).substring(2, 11),
-      createdAt: new Date().toISOString(),
-      levelKey: "berani-melihat",
-      consentTier: 0,
+export function useJeda(): JedaState {
+  return useSyncExternalStore(
+    subscribe,
+    () => state,
+    () => DEFAULT_STATE
+  );
+}
+
+// ── Aksi ─────────────────────────────────────────────────────
+
+export function giveConsent() {
+  set({ consentAt: new Date().toISOString() });
+}
+
+/** Simpan asesmen final + jalankan triage sekali jalan. */
+export function completeAssessment(a: Assessment) {
+  const triage = runTriage(a);
+  set({
+    assessment: { ...a, completedAt: new Date().toISOString() },
+    triage,
+  });
+}
+
+export function chooseJeda() {
+  set({
+    membership: {
+      plan: "jeruk",
+      since: new Date().toISOString(),
+      choseExternal: false,
     },
-  };
-
-  if (isBrowser) {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(currentState));
-    } catch (e) {
-      console.error("Failed to reset localStorage JEDA state:", e);
-    }
-  }
-
-  listeners.forEach((listener) => listener());
+  });
 }
 
-export function seedDemo(): void {
-  currentState = getDemoState();
+export function chooseExternal() {
+  set({ membership: { ...state.membership, choseExternal: true } });
+}
 
-  if (isBrowser) {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(currentState));
-    } catch (e) {
-      console.error("Failed to seed localStorage JEDA state:", e);
-    }
-  }
+export function createPlan() {
+  if (!state.assessment || !state.triage) return;
+  const plan = generatePlan(state.assessment, state.triage);
+  set({ plan });
+}
 
-  listeners.forEach((listener) => listener());
+export function toggleTask(taskId: string) {
+  if (!state.plan) return;
+  set({
+    plan: {
+      ...state.plan,
+      tasks: state.plan.tasks.map((t) =>
+        t.id === taskId ? { ...t, done: !t.done } : t
+      ),
+    },
+  });
+}
+
+export function addJedaEvent(e: JedaEvent) {
+  set({ jedaEvents: [e, ...state.jedaEvents] });
+}
+
+export function addJournal(entry: JournalEntry) {
+  set({ journal: [entry, ...state.journal] });
+}
+
+export function offerUpgrade() {
+  set({ upgradeOffered: true });
+}
+
+/** Kuratif → rehabilitatif setelah akar ditemukan lewat jurnal. */
+export function upgradeToRehabilitatif(root: RootCause) {
+  if (!state.assessment) return;
+  const assessment: Assessment = { ...state.assessment, rootCause: root };
+  const triage = runTriage(assessment);
+  const plan = generatePlan(assessment, triage);
+  set({ assessment, triage, plan, upgradeOffered: false });
+}
+
+export function resetAll() {
+  state = { ...DEFAULT_STATE };
+  persist();
+  listeners.forEach((l) => l());
+}
+
+// ── Demo ─────────────────────────────────────────────────────
+
+export function seedDemo() {
+  state = getDemoState();
+  persist();
+  listeners.forEach((l) => l());
+}
+
+/** Demo "maju 7 hari": jurnal terisi 1 minggu → pola siap ditemukan. */
+export function advanceDemoWeek() {
+  const journal = [...getDemoJournalWeek(), ...state.journal];
+  set({
+    journal,
+    settings: { ...state.settings, demoDayOffset: 7 },
+  });
 }

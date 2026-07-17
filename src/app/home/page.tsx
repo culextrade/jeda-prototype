@@ -1,93 +1,234 @@
 "use client";
 
+// ── Beranda hub pasca-triage ─────────────────────────────────
+
 import React from "react";
 import Link from "next/link";
-import { useJeda, useDebts, useStreak } from "@/lib/provider";
-import { totalOutstanding } from "@/lib/selectors";
-import { formatRupiah } from "@/lib/format";
-import Card from "@/components/ui/Card";
+import { useRouter } from "next/navigation";
+import {
+  ArrowRight,
+  BookOpen,
+  ChevronRight,
+  Info,
+  LifeBuoy,
+  Moon,
+  Sparkles,
+} from "lucide-react";
+import Card, { SectionTitle } from "@/components/ui/Card";
+import CountUp from "@/components/ui/CountUp";
 import Button from "@/components/ui/Button";
-import AntiRelapseCard from "@/components/jeda/AntiRelapseCard";
-import StreakFlame from "@/components/jeda/StreakFlame";
-import { Settings } from "lucide-react";
+import { useJeda } from "@/lib/store";
+import { JALUR_META } from "@/lib/engine/triage";
+import { journalInsight } from "@/lib/engine/journal";
+import { rupiahShort } from "@/lib/format";
 
 export default function HomePage() {
-  const { state } = useJeda();
-  const { debts } = useDebts();
-  const { streak } = useStreak();
+  const router = useRouter();
+  const state = useJeda();
 
-  const totalDebt = totalOutstanding(debts);
-  const displayName = state.profile?.displayName || "Sahabat Jeda";
+  if (!state.triage) {
+    return (
+      <div className="px-5 pt-2">
+        <Card className="flex flex-col items-center px-6 py-10 text-center">
+          <p className="font-display text-[20px] font-semibold tracking-tight">
+            Mulai dari peta, bukan tebakan
+          </p>
+          <p className="mt-2 max-w-[280px] text-[13px] leading-relaxed text-ink-soft">
+            3 menit percakapan untuk memetakan kondisi keuangan × mentalmu.
+            Gratis, anonim, tanpa akun.
+          </p>
+          <Button className="mt-5" onClick={() => router.push(state.consentAt ? "/asesmen" : "/mulai")}>
+            Mulai pemetaan <ArrowRight size={16} />
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
+  const t = state.triage;
+  const meta = JALUR_META[t.jalur];
+  const tunda = state.jedaEvents.filter((e) => e.decision === "tunda");
+  const nominalTunda = tunda.reduce((s, e) => s + e.amount, 0);
+  const bungaHemat = tunda.reduce((s, e) => s + e.interestAvoided, 0);
+
+  const insight = journalInsight(state.journal);
+  const nextTask = state.plan?.tasks.find((x) => !x.done);
+  const showUpgrade = t.jalur === "kuratif" && insight.found;
 
   return (
-    <div className="flex-1 flex flex-col gap-5 p-5 bg-canvas overflow-y-auto select-none">
-      {/* Welcome Header */}
-      <div className="flex justify-between items-center select-none pt-2">
-        <div>
-          <span className="text-caption text-ink-soft font-semibold">Selamat datang</span>
-          <h2 className="text-H2 font-display font-bold text-ink leading-tight">
-            {displayName}
-          </h2>
-        </div>
-        
-        {/* Settings Shortcut */}
+    <div className="px-5 pt-1">
+      {/* Sapaan + jalur */}
+      <div className="rise-in">
+        <p className="px-1 font-display text-[24px] font-semibold leading-snug tracking-tight">
+          {tunda.length > 0 ? (
+            <>
+              Kamu sudah menjeda{" "}
+              <em className="italic text-pine">{tunda.length} keputusan</em>
+            </>
+          ) : (
+            <>Satu jeda kecil, tiap hari</>
+          )}
+        </p>
         <Link
-          href="/settings"
-          className="w-9 h-9 rounded-full bg-surface border border-line/60 flex items-center justify-center text-ink-soft hover:text-ink active:scale-90 transition-all shadow-sm"
+          href="/hasil"
+          className="mt-3 flex items-center gap-3 rounded-lg border border-line bg-surface p-3.5 shadow-card transition-transform duration-150 ease-out active:scale-98"
         >
-          <Settings className="w-4 h-4" />
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pine-tint">
+            <span className="h-2.5 w-2.5 rounded-full bg-pine" />
+          </span>
+          <span className="flex-1">
+            <span className="block text-[13.5px] font-semibold">
+              Jalur {meta.title}
+            </span>
+            <span className="text-[11.5px] text-ink-soft">
+              Lihat lagi peta & alasan penilaianmu
+            </span>
+          </span>
+          <ChevronRight size={16} className="text-ink-faint" />
         </Link>
       </div>
 
-      {/* Streak Indicator Row (if any) */}
-      {streak.current > 0 && (
-        <Card tone="pine" className="py-3 px-4 flex justify-between items-center">
-          <span className="text-caption font-semibold">Streak Jeda harian kamu aktif:</span>
-          <StreakFlame days={streak.current} size="md" />
-        </Card>
+      {/* Upgrade kuratif → rehabilitatif */}
+      {showUpgrade && (
+        <Link
+          href="/jurnal"
+          className="rise-in mt-3 flex items-center gap-3.5 rounded-lg border border-amber/50 bg-amber-tint p-4 shadow-card transition-transform duration-150 ease-out active:scale-98"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber text-white">
+            <Sparkles size={18} />
+          </span>
+          <span className="flex-1">
+            <span className="block text-[13.5px] font-bold text-warn">
+              Pola akar masalahmu ketemu!
+            </span>
+            <span className="text-[12px] leading-snug text-ink-soft">
+              Buka jurnal untuk melihat & naik ke jalur Rehabilitatif
+            </span>
+          </span>
+          <ChevronRight size={16} className="text-warn" />
+        </Link>
       )}
 
-      {/* Main Focus: Anti-Relapse Card */}
-      <AntiRelapseCard />
-
-      {/* Debts Overview Card */}
-      <Card tone="default" className="flex flex-col gap-3 select-none">
-        <div className="flex justify-between items-start">
+      {/* Counter dampak */}
+      <Card className="mt-4 bg-deep p-5 text-white">
+        <p className="text-[12px] font-semibold uppercase tracking-[0.13em] text-white/55">
+          Dampak jedamu
+        </p>
+        <div className="mt-3 grid grid-cols-3 gap-3">
           <div>
-            <span className="text-caption text-ink-soft font-semibold">Total Kewajiban Terpetakan</span>
-            <h3 className="text-H1 font-display font-bold text-ink mt-1">
-              {formatRupiah(totalDebt)}
-            </h3>
+            <p className="font-display text-[26px] font-semibold leading-none">
+              <CountUp value={tunda.length} format={(v) => String(Math.round(v))} />
+            </p>
+            <p className="mt-1.5 text-[10.5px] leading-tight text-white/60">
+              keputusan
+              <br />
+              dijeda
+            </p>
           </div>
-          <span className="text-2xl">📊</span>
+          <div>
+            <p className="font-display text-[26px] font-semibold leading-none text-amber">
+              <CountUp value={nominalTunda} format={(v) => rupiahShort(v)} />
+            </p>
+            <p className="mt-1.5 text-[10.5px] leading-tight text-white/60">
+              utang baru
+              <br />
+              ditunda
+            </p>
+          </div>
+          <div>
+            <p className="font-display text-[26px] font-semibold leading-none text-amber">
+              <CountUp value={bungaHemat} format={(v) => rupiahShort(v)} />
+            </p>
+            <p className="mt-1.5 text-[10.5px] leading-tight text-white/60">
+              bunga tak jadi
+              <br />
+              berjalan*
+            </p>
+          </div>
         </div>
-        
-        <div className="h-[1px] bg-line/60 my-1" />
+        <p className="mt-3 text-[10px] leading-relaxed text-white/40">
+          *estimasi 90 hari pada batas bunga legal. Inilah metrik dampak JEDA —
+          terukur langsung di aplikasi, bukan klaim.
+        </p>
+      </Card>
 
-        <div className="flex justify-between items-center text-caption font-medium select-none">
-          <span className="text-ink-soft">
-            {debts.length} Pemberi pinjaman tercatat
-          </span>
-          <Link href="/debt-map" className="text-pine font-bold hover:underline">
-            Lihat Peta Utang →
+      {/* Langkah hari ini */}
+      {nextTask && (
+        <>
+          <SectionTitle className="mt-6">Langkah berikutnya</SectionTitle>
+          <Link
+            href={nextTask.href ?? "/rencana"}
+            className="mt-2.5 flex items-start gap-3.5 rounded-lg border border-pine/25 bg-pine-tint/60 p-4 transition-transform duration-150 ease-out active:scale-98"
+          >
+            <span className="mt-0.5 h-5 w-5 shrink-0 rounded-[8px] border-2 border-pine/50 bg-surface" />
+            <span className="flex-1">
+              <span className="block text-[13.5px] font-semibold leading-snug">
+                {nextTask.title}
+              </span>
+              {nextTask.detail && (
+                <span className="mt-0.5 block text-[11.5px] leading-relaxed text-ink-soft">
+                  {nextTask.detail}
+                </span>
+              )}
+            </span>
           </Link>
-        </div>
-      </Card>
+        </>
+      )}
 
-      {/* Call to action for Safe Space */}
-      <Card tone="clay" className="flex items-center justify-between p-4">
-        <div className="flex-1 flex flex-col gap-0.5 pr-2">
-          <span className="text-caption font-bold text-clay">Sedang tertekan/cemas?</span>
-          <span className="text-[11px] leading-tight text-ink-soft">
-            Pintu Safe Space selalu terbuka untuk membantumu mengambil jeda.
-          </span>
-        </div>
-        <Link href="/safe-space">
-          <Button variant="warm" size="sm" className="px-3 min-h-0 font-bold">
-            Masuk
-          </Button>
-        </Link>
-      </Card>
+      {/* Aksi cepat */}
+      <SectionTitle className="mt-6">Alatmu</SectionTitle>
+      <div className="mt-2.5 grid grid-cols-2 gap-2.5">
+        {[
+          {
+            href: "/jurnal",
+            icon: BookOpen,
+            title: "Jurnal malam ini",
+            desc: "60 detik — mood × uang",
+            tone: "bg-pine-tint text-pine-dark",
+          },
+          {
+            href: "/dc",
+            icon: LifeBuoy,
+            title: "Mode Tenang",
+            desc: "Saat penagih menekan",
+            tone: "bg-clay-tint text-clay",
+          },
+          {
+            href: "/tidur",
+            icon: Moon,
+            title: "Modul tidur",
+            desc: "Rem impuls dimulai di sini",
+            tone: "bg-amber-tint text-warn",
+          },
+          {
+            href: "/tentang",
+            icon: Info,
+            title: "Tentang prototype",
+            desc: "Status jujur & privasi",
+            tone: "bg-line/50 text-ink-soft",
+          },
+        ].map((a) => (
+          <Link
+            key={a.href}
+            href={a.href}
+            className="rounded-lg border border-line bg-surface p-4 shadow-card transition-transform duration-150 ease-out active:scale-98"
+          >
+            <span className={`flex h-9 w-9 items-center justify-center rounded-full ${a.tone}`}>
+              <a.icon size={17} strokeWidth={2.2} />
+            </span>
+            <p className="mt-2.5 text-[13px] font-semibold leading-tight">{a.title}</p>
+            <p className="mt-0.5 text-[11px] leading-snug text-ink-faint">{a.desc}</p>
+          </Link>
+        ))}
+      </div>
+
+      <p className="mt-6 px-2 text-center text-[11px] leading-relaxed text-ink-faint">
+        Merasa memburuk kapan pun?{" "}
+        <Link href="/krisis" className="font-semibold text-clay underline-offset-2 hover:underline">
+          Bantuan 24 jam selalu di sini
+        </Link>{" "}
+        — gratis.
+      </p>
     </div>
   );
 }

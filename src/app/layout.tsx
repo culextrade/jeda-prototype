@@ -1,29 +1,28 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Inter } from "next/font/google";
-import { JedaProvider } from "@/lib/provider";
+import { Fraunces, Inter } from "next/font/google";
 import AppFrame from "@/components/shell/AppFrame";
-import AppHeader from "@/components/shell/AppHeader";
-import BottomNav from "@/components/shell/BottomNav";
-import FabJedaDulu from "@/components/shell/FabJedaDulu";
+import ShellChrome from "@/components/shell/ShellChrome";
 import "./globals.css";
 
-const jakarta = Plus_Jakarta_Sans({
+const fraunces = Fraunces({
   subsets: ["latin"],
-  variable: "--font-jakarta",
-  weight: ["600", "700"],
+  variable: "--font-fraunces",
+  weight: ["400", "500", "600"],
+  style: ["normal", "italic"],
   display: "swap",
 });
 
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
-  weight: ["400", "500", "600"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "JEDA — Berhenti sejenak sebelum memutuskan",
-  description: "Platform pemulihan utang emotional-first local-first",
+  title: "JEDA — Berhenti sejenak, sebelum terjerat lebih dalam",
+  description:
+    "Intervensi terintegrasi finansial–mental: petakan kondisi keuangan dan kesehatan mentalmu, lalu susun rencana pemulihan personal.",
   manifest: "/manifest.json",
 };
 
@@ -33,18 +32,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" className={`${jakarta.variable} ${inter.variable} h-full`}>
-      <body className="h-full bg-[#ECEFEF] text-ink font-sans antialiased overflow-hidden">
-        <JedaProvider>
-          <AppFrame>
-            <AppHeader />
-            <main className="flex-1 overflow-y-auto overflow-x-hidden relative flex flex-col">
-              {children}
-            </main>
-            <FabJedaDulu />
-            <BottomNav />
-          </AppFrame>
-        </JedaProvider>
+    <html lang="id" className={`${fraunces.variable} ${inter.variable} h-full`}>
+      <body className="h-full overflow-hidden font-sans text-ink antialiased">
+        <AppFrame>
+          <ShellChrome>{children}</ShellChrome>
+        </AppFrame>
       </body>
     </html>
   );
