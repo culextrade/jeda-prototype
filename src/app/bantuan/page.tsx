@@ -4,9 +4,29 @@
 
 import React from "react";
 import Link from "next/link";
-import { ChevronRight, ExternalLink, HeartHandshake, Phone, ShieldAlert } from "lucide-react";
+import {
+  ChevronRight,
+  ExternalLink,
+  Gavel,
+  HeartPulse,
+  MessageSquareWarning,
+  Phone,
+  SearchCheck,
+  ShieldAlert,
+} from "lucide-react";
 import Card, { SectionTitle } from "@/components/ui/Card";
-import { DIREKTORI_RUJUKAN, LAPOR } from "@/lib/content";
+import { DIREKTORI_RUJUKAN, LAPOR, RujukanIcon } from "@/lib/content";
+
+const RUJUKAN_ICON: Record<
+  RujukanIcon,
+  React.ComponentType<{ size?: number; strokeWidth?: number }>
+> = {
+  jiwa: HeartPulse,
+  krisis: Phone,
+  legalitas: SearchCheck,
+  aduan: MessageSquareWarning,
+  hukum: Gavel,
+};
 
 export default function BantuanPage() {
   return (
@@ -54,7 +74,9 @@ export default function BantuanPage() {
         mengantarmu ke pintunya.
       </p>
       <div className="mt-3 flex flex-col gap-2">
-        {DIREKTORI_RUJUKAN.map((d) => (
+        {DIREKTORI_RUJUKAN.map((d) => {
+          const Icon = RUJUKAN_ICON[d.icon];
+          return (
           <a
             key={d.name}
             href={d.href}
@@ -63,7 +85,7 @@ export default function BantuanPage() {
             className="flex items-center gap-3.5 rounded-lg border border-line bg-surface p-4 shadow-card transition-transform duration-150 ease-out active:scale-98"
           >
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-pine-tint text-pine">
-              <HeartHandshake size={17} />
+              <Icon size={17} strokeWidth={2.1} />
             </span>
             <span className="flex-1">
               <span className="block text-[13.5px] font-semibold">{d.name}</span>
@@ -71,7 +93,8 @@ export default function BantuanPage() {
             </span>
             <ExternalLink size={14} className="shrink-0 text-ink-faint" />
           </a>
-        ))}
+          );
+        })}
       </div>
 
       {/* Lapor */}

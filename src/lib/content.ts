@@ -120,30 +120,42 @@ export const REFLECTIVE_QUESTIONS = [
   "Kalau gaji bulan depan sudah terpotong cicilan ini, apa yang tersisa untuk kebutuhanmu?",
 ];
 
-export const DIREKTORI_RUJUKAN = [
+export type RujukanIcon = "jiwa" | "krisis" | "legalitas" | "aduan" | "hukum";
+
+export const DIREKTORI_RUJUKAN: {
+  name: string;
+  detail: string;
+  href: string;
+  icon: RujukanIcon;
+}[] = [
   {
     name: "Psikolog Puskesmas",
     detail: "Layanan kesehatan jiwa primer, gratis via BPJS",
     href: "https://yankes.kemkes.go.id",
+    icon: "jiwa",
   },
   {
     name: "Healing119 (Kemenkes)",
     detail: "Dukungan psikologis 24 jam — 119 ext 8",
     href: "https://healing119.id",
+    icon: "krisis",
   },
   {
     name: "Cek legalitas pindar (OJK)",
     detail: "Daftar penyelenggara berizin, diperbarui berkala",
     href: "https://www.ojk.go.id",
+    icon: "legalitas",
   },
   {
     name: "Kontak OJK 157",
     detail: "Pengaduan konsumen keuangan",
     href: "tel:157",
+    icon: "aduan",
   },
   {
     name: "Lembaga Bantuan Hukum",
     detail: "Pendampingan hukum bila utang berujung sengketa",
     href: "https://ylbhi.or.id",
+    icon: "hukum",
   },
 ];
