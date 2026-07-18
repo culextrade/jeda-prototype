@@ -23,6 +23,7 @@ const STATUS = [
       "Protokol krisis (PHQ-9 item 9) — selalu tanpa paywall",
       "Mode Tenang: hak konsumen + skrip + grounding",
       "Jurnal mood×uang + deteksi pola rule-based",
+      "Laporan Jeda bulanan + Struk Jeda — dihitung dari data user",
       "Penyimpanan local-first — tanpa akun, tanpa server",
     ],
   },
@@ -33,6 +34,8 @@ const STATUS = [
     items: [
       "Narasi “AI” pada ringkasan asesmen (scripted; produksi: LLM + guardrail klinis)",
       "Pembayaran paket jeruk (tidak ada transaksi nyata)",
+      "Lingkar Saksi (tampilan; beta bertahap dengan moderator terlatih)",
+      "Pemutar audio Malam Jeda & sesi live Tanya Dokter",
       "Data persona demo (Raka) untuk presentasi",
       "Pengingat/notifikasi",
     ],

@@ -9,10 +9,13 @@ import {
   ArrowRight,
   BookOpen,
   ChevronRight,
+  FileText,
+  GraduationCap,
   Info,
   LifeBuoy,
   Moon,
   Sparkles,
+  Users,
 } from "lucide-react";
 import Card, { SectionTitle } from "@/components/ui/Card";
 import CountUp from "@/components/ui/CountUp";
@@ -175,6 +178,27 @@ export default function HomePage() {
         </>
       )}
 
+      {/* Laporan bulanan (paket jeruk) */}
+      {state.membership.plan === "jeruk" && (
+        <Link
+          href="/laporan"
+          className="mt-4 flex items-center gap-3.5 rounded-lg bg-deep p-4 text-white shadow-card transition-transform duration-150 ease-out active:scale-98"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/12">
+            <FileText size={17} className="text-amber" />
+          </span>
+          <span className="flex-1">
+            <span className="block text-[13.5px] font-semibold">
+              Laporan Jeda bulan ini siap 🧾
+            </span>
+            <span className="text-[11.5px] text-white/70">
+              Pola, DSR, dan struk penghematanmu — dari datamu sendiri
+            </span>
+          </span>
+          <ChevronRight size={16} className="text-white/60" />
+        </Link>
+      )}
+
       {/* Aksi cepat */}
       <SectionTitle className="mt-6">Alatmu</SectionTitle>
       <div className="mt-2.5 grid grid-cols-2 gap-2.5">
@@ -187,6 +211,20 @@ export default function HomePage() {
             tone: "bg-pine-tint text-pine-dark",
           },
           {
+            href: "/kelas",
+            icon: GraduationCap,
+            title: "Kelas Jeda",
+            desc: "Bedah kasus & Uang×Otak",
+            tone: "bg-pine-tint text-pine-dark",
+          },
+          {
+            href: "/lingkar",
+            icon: Users,
+            title: "Lingkar Saksi",
+            desc: "Pemulihanmu punya saksi",
+            tone: "bg-amber-tint text-warn",
+          },
+          {
             href: "/dc",
             icon: LifeBuoy,
             title: "Mode Tenang",
@@ -196,8 +234,8 @@ export default function HomePage() {
           {
             href: "/tidur",
             icon: Moon,
-            title: "Modul tidur",
-            desc: "Rem impuls dimulai di sini",
+            title: "Tidur & Malam Jeda",
+            desc: "Ritual 21.30 tiap malam",
             tone: "bg-amber-tint text-warn",
           },
           {

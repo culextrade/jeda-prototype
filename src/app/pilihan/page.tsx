@@ -31,18 +31,19 @@ export default function PilihanPage() {
 
   const benefits = preventif
     ? [
-        "Tombol Jeda + counter dampak pribadimu",
-        "Rutinitas jaga arus kas & bantalan mikro",
-        "Jurnal mood×uang + deteksi pola dini",
+        "Laporan Jeda bulanan + Struk penghematanmu",
+        "Malam Jeda 21.30 & Kelas Uang×Otak dari tim klinis",
+        "Lingkar Saksi — kebiasaan baikmu punya teman",
         "Check-in bulanan — kami pantau sebelum jadi masalah",
       ]
     : [
         "Rencana pemulihan personal — urutan utang + 4 minggu pertama",
-        "Skrip negosiasi & perisai hak konsumen saat ditagih",
+        "Laporan Jeda bulanan: pola, DSR, & struk penghematanmu",
+        "Lingkar Saksi — satu-satunya tempat pemulihanmu dirayakan",
+        "Malam Jeda 21.30, Bedah Kasus, & Tanya Dokter Jeda",
         jalur === "kuratif"
           ? "Jurnal terpandu untuk menemukan akar masalahmu"
           : "Modul yang menyasar akar masalahmu (CBT mikro, tidur)",
-        "Check-in mingguan + rujukan terarah bila perlu",
       ];
 
   return (

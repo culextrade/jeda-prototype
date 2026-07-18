@@ -5,9 +5,10 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Check, Moon } from "lucide-react";
+import { Check, Moon, Play, Radio } from "lucide-react";
 import Card, { SectionTitle } from "@/components/ui/Card";
 import { SLEEP_STEPS } from "@/lib/content";
+import { MALAM_JEDA } from "@/lib/content-retensi";
 import { cn } from "@/lib/utils";
 
 export default function TidurPage() {
@@ -73,6 +74,43 @@ export default function TidurPage() {
           </button>
         ))}
       </div>
+
+      {/* Malam Jeda 21.30 */}
+      <SectionTitle className="mt-6">Malam Jeda</SectionTitle>
+      <Card className="mt-2.5 overflow-hidden bg-deep p-0 text-white">
+        <div className="flex items-center gap-2.5 px-5 pt-4">
+          <Radio size={14} className="animate-pulse-soft text-amber" />
+          <span className="text-[11.5px] font-bold uppercase tracking-[0.1em] text-amber">
+            {MALAM_JEDA.time}
+          </span>
+        </div>
+        <p className="px-5 pt-2 text-[12.5px] leading-relaxed text-white/75">
+          {MALAM_JEDA.why}
+        </p>
+        <div className="mt-3.5 flex flex-col">
+          {MALAM_JEDA.tracks.map((t, i) => (
+            <div
+              key={t.title}
+              className={cn(
+                "flex items-center gap-3.5 px-5 py-3",
+                i > 0 && "border-t border-white/10"
+              )}
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/12">
+                <Play size={13} className="ml-0.5" />
+              </span>
+              <span className="flex-1 text-[13px] font-medium">{t.title}</span>
+              <span className="text-[11.5px] tabular-nums text-white/55">
+                {t.minutes} mnt
+              </span>
+            </div>
+          ))}
+        </div>
+        <p className="border-t border-white/10 px-5 py-3 text-[10.5px] text-white/45">
+          Pemutar audio disimulasikan pada prototype — naskah & rekaman versi
+          produksi disusun tim klinis.
+        </p>
+      </Card>
 
       <Link
         href="/jeda"

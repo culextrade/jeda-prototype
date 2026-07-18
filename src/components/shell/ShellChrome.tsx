@@ -27,6 +27,9 @@ const HUB_TITLES: Record<string, string> = {
   "/dc": "Mode Tenang",
   "/tidur": "Modul Tidur",
   "/tentang": "Tentang Prototype",
+  "/laporan": "Laporan Jeda",
+  "/kelas": "Kelas Jeda",
+  "/lingkar": "Lingkar Saksi",
 };
 
 const NAV = [
@@ -40,6 +43,9 @@ const BACK_TARGET: Record<string, string> = {
   "/dc": "/bantuan",
   "/tidur": "/rencana",
   "/tentang": "/home",
+  "/laporan": "/home",
+  "/kelas": "/home",
+  "/lingkar": "/home",
 };
 
 export default function ShellChrome({
