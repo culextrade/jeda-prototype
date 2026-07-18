@@ -90,13 +90,22 @@ export default function AsesmenPage() {
   const [typing, setTyping] = useState(false);
   const [panelVisible, setPanelVisible] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  // draftRef = sumber kebenaran SINKRON. Semua perubahan lewat commit() agar
+  // draftRef.current selalu terbaru dalam tick yang sama — tidak menunggu
+  // render. Ini akar perbaikan seluruh kelas bug "baca setelah patch"
+  // (mis. doneDebts membaca 0 pinjaman padahal baru saja ditambah).
   const draftRef = useRef(draft);
-  draftRef.current = draft;
   const bootedRef = useRef(false);
   // Kunci re-entrancy: satu interaksi diproses pada satu waktu. Tanpa ini,
   // ketukan cepat / double-tap memicu handler dua kali dengan draft yang
   // sama-stale → gelembung ganda & jawaban tidak sinkron dengan input.
   const lockRef = useRef(false);
+
+  // Satu-satunya jalan mengubah draft: perbarui ref (sinkron) lalu state.
+  function commit(next: Draft) {
+    draftRef.current = next;
+    setDraft(next);
+  }
 
   // ── util pesan ──
   const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -111,21 +120,24 @@ export default function AsesmenPage() {
         typeof t === "string"
           ? { id: uid(), who: "bot", text: t }
           : { id: uid(), who: "bot", text: t.text, small: t.small };
-      setDraft((d) => ({ ...d, messages: [...d.messages, m] }));
+      commit({ ...draftRef.current, messages: [...draftRef.current.messages, m] });
       await delay(180);
     }
     setPanelVisible(true);
   }
 
   function userSay(text: string) {
-    setDraft((d) => ({
-      ...d,
-      messages: [...d.messages, { id: uid(), who: "user", text }],
-    }));
+    commit({
+      ...draftRef.current,
+      messages: [
+        ...draftRef.current.messages,
+        { id: uid(), who: "user", text },
+      ],
+    });
   }
 
   function patch(p: Partial<Draft>) {
-    setDraft((d) => ({ ...d, ...p }));
+    commit({ ...draftRef.current, ...p });
   }
 
   // ── persist draft ──
@@ -148,7 +160,7 @@ export default function AsesmenPage() {
 
     const resume = new URLSearchParams(window.location.search).get("resume");
     if (restored && restored.messages.length > 0) {
-      setDraft(restored);
+      commit(restored);
       if (restored.stage === "krisis-hold" && resume === "1") {
         // kembali dari layar krisis — lanjutkan dengan lembut
         void (async () => {
